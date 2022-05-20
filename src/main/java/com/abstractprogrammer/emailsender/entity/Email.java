@@ -1,5 +1,6 @@
 package com.abstractprogrammer.emailsender.entity;
 
+import biweekly.ICalendar;
 import lombok.Data;
 
 import java.io.File;
@@ -18,6 +19,8 @@ public class Email {
     private List<File> attachments;
     private String templateName;
     private Map<String, String> templateParams;
+
+    ICalendar calendar;
 
     @Override
     public String toString() {

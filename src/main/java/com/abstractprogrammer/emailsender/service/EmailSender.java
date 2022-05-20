@@ -1,20 +1,23 @@
 package com.abstractprogrammer.emailsender.service;
 
+import biweekly.Biweekly;
+import biweekly.ICalendar;
 import com.abstractprogrammer.emailsender.entity.Email;
 import freemarker.template.Configuration;
 import freemarker.template.TemplateException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.activation.DataHandler;
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
+import javax.mail.util.ByteArrayDataSource;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Objects;
@@ -85,7 +88,26 @@ public class EmailSender {
                     message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(bccSendTo));
                 }
                 message.setSubject(email.getSubject());
-                if (email.getAttachments() != null && !email.getAttachments().isEmpty()) {
+                if (email.getCalendar() != null) {
+                    ICalendar iCalendar = email.getCalendar();
+                    iCalendar.getEvents().get(0).setDescription(getEmailContent(email));
+                    MimeBodyPart calBodyPart = new MimeBodyPart();
+
+                    calBodyPart.setHeader("Content-Class", "urn:content-classes:calendarmessage");
+                    calBodyPart.setHeader("Content-ID", "calendar_message");
+                    calBodyPart.setDataHandler(new DataHandler(
+                            new ByteArrayDataSource(Biweekly.write(iCalendar).go(),
+                                    String.format("text/calendar;method=%s;name=\"invite.ics\"",
+                                            "REQUEST"))));
+
+                    MimeMultipart multipart = new MimeMultipart();
+                    BodyPart messageBodyPart = new MimeBodyPart();
+                    messageBodyPart.setContent(getEmailContent(email), "text/html; charset=utf-8");
+                    multipart.addBodyPart(messageBodyPart);
+                    multipart.addBodyPart(calBodyPart);
+                    message.setContent(multipart);
+                }
+                else if (email.getAttachments() != null && !email.getAttachments().isEmpty()) {
                     Multipart multipart = new MimeMultipart();
                     BodyPart messageBodyPart = new MimeBodyPart();
                     messageBodyPart.setContent(getEmailContent(email), "text/html; charset=utf-8");
